@@ -13,7 +13,7 @@ order by location, date;
 -- shows the percentage of population that has contracted covid
 select location,date, total_cases,population,(total_cases/population)*100 as percent_population_infected
 from covid_deaths
-where location = 'Africa'
+--where location = 'Africa'
 order by date;
 
 -- Looking at countries with highest infection rate compared to population
