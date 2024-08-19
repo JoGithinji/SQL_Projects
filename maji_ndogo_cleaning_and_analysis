@@ -79,3 +79,45 @@ order by count(v.record_id) desc)
 select province_name, town_name, count(records) as record_count from cte3
 group by province_name, town_name
 order by province_name, record_count desc ;
+
+
+-- looking at the number of records for each location type
+with cte4 as (select v.location_id, l.location_type, count(v.record_id) records from location l
+inner join visits v
+on v.location_id = l.location_id
+group by v.location_id
+order by count(v.record_id) desc)
+
+select location_type , count(records) as record_count from cte4
+group by location_type
+order by count(records) desc ;
+
+-- how many people were surveyed?
+select sum(number_of_people_served) from water_source;
+
+-- How many wells, taps and rivers are there?
+select type_of_water_source, count(type_of_water_source) from water_source
+group by type_of_water_source;
+
+-- How many people share particular types of water sources on average?
+select type_of_water_source, round(avg(number_of_people_served)) avg_people_served from water_source
+group by type_of_water_source;
+
+-- How many people are getting water from each type of source?
+select type_of_water_source,sum(number_of_people_served) as total_people_served from water_source 
+group by type_of_water_source
+order by sum(number_of_people_served) desc ;
+
+-- of the above get percentage of total 
+with cte5 as 
+(select type_of_water_source,sum(number_of_people_served) as total_people_served from water_source 
+group by type_of_water_source
+order by sum(number_of_people_served) desc) 
+
+SELECT 
+    type_of_water_source,
+    total_people_served,
+    ROUND((total_people_served / SUM(total_people_served) OVER ()) * 100, 2) AS percentage_of_total,
+    RANK() OVER (ORDER BY total_people_served DESC) AS rank_by_people_served
+FROM 
+    cte5;
