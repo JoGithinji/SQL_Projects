@@ -1,0 +1,33 @@
+/*employee table has info on all of the workers, but the email addresses have not been added. 
+We will have to send them reports and figures, so I'll update it. 
+The emails for the department have this format: first_name.last_name@ndogowater.gov. */
+
+use md_water_services;
+
+SELECT
+CONCAT(LOWER(REPLACE(employee_name, ' ', '.')), '@ndogowater.gov') AS new_email
+FROM
+employee;
+
+SET SQL_SAFE_UPDATES = 0;
+
+UPDATE employee
+SET email = CONCAT(LOWER(REPLACE(employee_name, ' ', '.')), '@ndogowater.gov');
+select * from employee;
+
+/* The phone numbers should be 12 characters long, consisting of the plus sign, area code (99), and the phone number digits. However, when we use
+the LENGTH(column) function, it returns 13 characters, indicating there's an extra character.
+ */
+ SELECT LENGTH(phone_number) FROM employee;
+ 
+ -- upon investigation I discovered that there is a space at the end of the number
+ -- If one tries to send an automated SMS to that number it will fail.
+ -- to fix this issue I used the function TRIM
+ 
+ UPDATE employee
+SET phone_number = TRIM(phone_number);
+
+-- Having a look at where the employees live.
+select * from employee;
+select town_name, count(province_name) as number_of_employees from employee
+group by town_name;
