@@ -31,3 +31,51 @@ SET phone_number = TRIM(phone_number);
 select * from employee;
 select town_name, count(province_name) as number_of_employees from employee
 group by town_name;
+
+
+
+-- get the number of records each employee collected.
+select * from visits;
+select  v.assigned_employee_id, e.employee_name, count(v.record_id) records_collected from visits v
+inner join employee e
+on e.assigned_employee_id = v.assigned_employee_id
+group by v.assigned_employee_id
+order by count(v.record_id) desc;
+
+
+
+-- getting the number of records collected per town
+with cte as (select v.location_id, l.town_name, count(v.record_id) records from location l
+inner join visits v
+on v.location_id = l.location_id
+group by v.location_id
+order by count(v.record_id) desc)
+
+select town_name, count(records) as record_count from cte
+group by town_name
+order by count(records) desc ;
+
+
+-- Counting the records per province.
+with cte2 as (select v.location_id, l.province_name, count(v.record_id) records from location l
+inner join visits v
+on v.location_id = l.location_id
+group by v.location_id
+order by count(v.record_id) desc)
+
+select province_name, count(records) as record_count from cte2
+group by province_name
+order by count(records) desc ;
+
+
+
+-- grouping both province_name and town_name together
+with cte3 as (select v.location_id, l.province_name, l.town_name, count(v.record_id) records from location l
+inner join visits v
+on v.location_id = l.location_id
+group by v.location_id
+order by count(v.record_id) desc)
+
+select province_name, town_name, count(records) as record_count from cte3
+group by province_name, town_name
+order by province_name, record_count desc ;
