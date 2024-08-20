@@ -121,3 +121,130 @@ SELECT
     RANK() OVER (ORDER BY total_people_served DESC) AS rank_by_people_served
 FROM 
     cte5;
+
+
+ /*
+ The simple approach is to fix the things that affect most people first.
+ So I'll write a query that ranks each type of source based on how many people in total use it.
+ */
+ 
+ SELECT 
+    source_id,
+    type_of_water_source,
+    number_of_people_served,
+     RANK() OVER (PARTITION BY type_of_water_source ORDER BY number_of_people_served DESC) AS rank_within_group
+FROM 
+    water_source;   
+    
+-- How long did the survey take?
+SELECT 
+    min(time_of_record) as start_date,
+    max(time_of_record) as end_date,
+    DATEDIFF(max(time_of_record) , min(time_of_record) ) AS days_taken
+FROM 
+    visits;
+    
+-- What is the average total queue time for water?
+select AVG(NULLIF(time_in_queue, 0)) AS average_queue_time from visits ;
+
+-- What is the average queue time on different days?
+select DAYNAME(time_of_record) as day_of_week, round(AVG(NULLIF(time_in_queue, 0))) as avg_queue_time from visits;
+
+-- What time during the day people collect water?
+select TIME_FORMAT(TIME(time_of_record), '%H:00') AS hour_of_day, round(AVG(NULLIF(time_in_queue, 0))) as avg_queue_time  from visits
+group by TIME_FORMAT(TIME(time_of_record), '%H:00') 
+order by TIME_FORMAT(TIME(time_of_record), '%H:00');
+-- mornings and evenings are the busiest based on the results
+
+
+SELECT
+TIME_FORMAT(TIME(time_of_record), '%H:00') AS hour_of_day,
+-- Sunday
+ROUND(AVG(
+CASE
+WHEN DAYNAME(time_of_record) = 'Sunday' THEN time_in_queue
+ELSE NULL
+END
+),0) AS Sunday,
+-- Monday
+ROUND(AVG(
+CASE
+WHEN DAYNAME(time_of_record) = 'Monday' THEN time_in_queue
+ELSE NULL
+END
+),0) AS Monday,
+-- Tuesday
+ROUND(AVG(
+CASE
+WHEN DAYNAME(time_of_record) = 'Tuesday' THEN time_in_queue
+ELSE NULL
+END
+),0) AS Tuesday,
+-- Wednesday
+ROUND(AVG(
+CASE
+WHEN DAYNAME(time_of_record) = 'Wednesday' THEN time_in_queue
+ELSE NULL
+END
+),0) AS Wednesday,
+ROUND(AVG(
+CASE
+WHEN DAYNAME(time_of_record) = 'Thursday' THEN time_in_queue
+ELSE NULL
+END
+),0) AS Thursday,
+ROUND(AVG(
+CASE
+WHEN DAYNAME(time_of_record) = 'Friday' THEN time_in_queue
+ELSE NULL
+END
+),0) AS Friday,
+ROUND(AVG(
+CASE
+WHEN DAYNAME(time_of_record) = 'Saturday' THEN time_in_queue
+ELSE NULL
+END
+),0) AS Saturday
+
+FROM
+visits
+WHERE
+time_in_queue != 0 -- this excludes other sources with 0 queue times
+GROUP BY
+hour_of_day
+ORDER BY
+hour_of_day;
+
+/*
+1. Queues are very long on a Monday morning and Monday evening as people rush to get water.
+2. Wednesday has the lowest queue times, but long queues on Wednesday evening.
+3. People have to queue pretty much twice as long on Saturdays compared to the weekdays. It looks like people spend their Saturdays queueing
+for water, perhaps for the week's supply?
+4. The shortest queues are on Sundays,
+*/
+
+/*
+Insights
+1. Most water sources are rural.
+2. 43% of our people are using shared taps. 2000 people often share one tap.
+3. 31% of our population has water infrastructure in their homes, but within that group, 45% face non-functional systems due to issues with pipes,
+pumps, and reservoirs.
+4. 18% of our people are using wells of which, but within that, only 28% are clean..
+5. Our citizens often face long wait times for water, averaging more than 120 minutes.
+6. In terms of queues:
+- Queues are very long on Saturdays.
+- Queues are longer in the mornings and evenings.
+- Wednesdays and Sundays have the shortest queues.
+*/
+
+/*
+Recommendations
+1. We want to focus our efforts on improving the water sources that affect the most people.
+- Most people will benefit if we improve the shared taps first.
+- Wells are a good source of water, but many are contaminated. Fixing this will benefit a lot of people.
+- Fixing existing infrastructure will help many people. If they have running water again, they won't have to queue, thereby shorting queue times for
+others. So we can solve two problems at once.
+- Installing taps in homes will stretch our resources too thin, so for now, if the queue times are low, we won't improve that source.
+2. Most water sources are in rural areas. We need to ensure our teams know this as this means they will have to make these repairs/upgrades in
+rural areas where road conditions, supplies, and labour are harder challenges to overcome.
+*/
