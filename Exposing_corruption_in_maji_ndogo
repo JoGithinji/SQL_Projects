@@ -1,0 +1,66 @@
+use md_water_services;
+
+select * from auditor_report;
+
+select * from visits;
+
+select
+    ar.location_id as audit_location,
+    v.record_id,
+    ar.true_water_source_score as auditor_score,
+    wq.subjective_quality_score as surveyor_score
+from visits v
+join auditor_report ar
+on v.location_id = ar.location_id
+join water_quality wq
+on v.record_id = wq.record_id
+where v.visit_count = 1
+and ar.true_water_source_score != wq.subjective_quality_score  ;
+
+-- get to see which employees made these errors
+select
+    ar.location_id as audit_location,
+    v.record_id,
+    e.employee_name,
+    ar.true_water_source_score as auditor_score,
+    wq.subjective_quality_score as surveyor_score
+from visits v
+join auditor_report ar
+on v.location_id = ar.location_id
+join water_quality wq
+on v.record_id = wq.record_id
+join employee e on v.assigned_employee_id = e.assigned_employee_id
+where v.visit_count = 1
+and ar.true_water_source_score != wq.subjective_quality_score  ;
+
+-- summary of the errors made by each employee
+with cte as (
+    select
+    ar.location_id as audit_location,
+    v.record_id,
+    e.employee_name,
+    ar.true_water_source_score as auditor_score,
+    wq.subjective_quality_score as surveyor_score
+from visits v
+join auditor_report ar
+on v.location_id = ar.location_id
+join water_quality wq
+on v.record_id = wq.record_id
+join employee e on v.assigned_employee_id = e.assigned_employee_id
+where v.visit_count = 1
+and ar.true_water_source_score != wq.subjective_quality_score
+
+)
+
+select employee_name, count(*) as error_count from cte
+group by employee_name
+order by count(*) desc;
+
+/*
+It was reported from the auditor that some of the things he heard on the streets were quite shady,
+How would we go about finding out if any of our employees are corrupt?
+Let's say all employees make mistakes, if someone is corrupt, they will be making a lot of "mistakes", more than average, for example. But someone
+could just be clumsy, so we should try to get more evidence.
+
+So first I'll try to find all of the employees who have an above-average number of mistakes.
+*/
