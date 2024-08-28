@@ -4,6 +4,23 @@ select * from auditor_report;
 
 select * from visits;
 
+-- check if the auditor's and exployees' scores agree.
+
+select
+    ar.location_id as audit_location,
+    v.record_id,
+    ar.true_water_source_score as auditor_score,
+    wq.subjective_quality_score as surveyor_score
+from visits v
+join auditor_report ar
+on v.location_id = ar.location_id
+join water_quality wq
+on v.record_id = wq.record_id
+;
+
+-- Some of the locations were visited multiple times, so these records are duplicated here.
+-- To fix it, we set visits.visit_count = 1 in the WHERE clause.
+
 select
     ar.location_id as audit_location,
     v.record_id,
@@ -58,9 +75,102 @@ order by count(*) desc;
 
 /*
 It was reported from the auditor that some of the things he heard on the streets were quite shady,
-How would we go about finding out if any of our employees are corrupt?
-Let's say all employees make mistakes, if someone is corrupt, they will be making a lot of "mistakes", more than average, for example. But someone
-could just be clumsy, so we should try to get more evidence.
-
+How does one go about finding out if any of the employees are corrupt?
+All employees make mistakes, presumably,if someone is corrupt, they will be making a lot of "mistakes", more than average, for example. But someone
+could just be clumsy, so I'll should try to get more evidence.
 So first I'll try to find all of the employees who have an above-average number of mistakes.
+*/
+
+with cte1 as (
+    select
+    ar.location_id as audit_location,
+    v.record_id,
+    e.employee_name,
+    ar.true_water_source_score as auditor_score,
+    wq.subjective_quality_score as surveyor_score
+from visits v
+join auditor_report ar
+on v.location_id = ar.location_id
+join water_quality wq
+on v.record_id = wq.record_id
+join employee e on v.assigned_employee_id = e.assigned_employee_id
+where v.visit_count = 1
+and ar.true_water_source_score != wq.subjective_quality_score
+
+),
+cte2 as(
+select employee_name, count(*) as error_count from cte1
+group by employee_name
+order by count(*) desc)
+
+SELECT
+employee_name,
+error_count
+FROM
+cte2
+WHERE
+error_count > (select avg(error_count) from cte2);
+;
+
+-- replace WITH with CREATE VIEW
+drop view Incorrect_records;
+create view Incorrect_records as (
+
+   select
+    ar.location_id as audit_location,
+    v.record_id,
+    e.employee_name,
+    ar.true_water_source_score as auditor_score,
+    wq.subjective_quality_score as surveyor_score,
+    ar.statements
+from visits v
+join auditor_report ar
+on v.location_id = ar.location_id
+join water_quality wq
+on v.record_id = wq.record_id
+join employee e on v.assigned_employee_id = e.assigned_employee_id
+where v.visit_count = 1
+and ar.true_water_source_score != wq.subjective_quality_score
+);
+select * from Incorrect_records;
+
+-- we convert the query for error_count, we made earlier, into a CTE.
+WITH error_count AS (
+SELECT
+employee_name,
+COUNT(employee_name) AS number_of_mistakes
+FROM
+Incorrect_records
+GROUP BY
+employee_name),
+
+
+-- Now calculate the average of the number_of_mistakes in error_count.
+-- Also find the employees who made more mistakes than the average person, we need the employee's names, the number of mistakes each one made
+suspect_list as (
+select employee_name, number_of_mistakes from error_count
+where number_of_mistakes > (select avg(number_of_mistakes) from error_count))
+
+-- the query above will show the employees who made more mistakes, on average, than their peers, so I'll have a closer look at them.
+-- I'll look at the Incorrect_records table again, and isolate all of the records these four employees gathered.
+-- I'll also look at the statements for these records to look for patterns.
+
+-- This query filters all of the records where the "corrupt" employees gathered data.
+SELECT
+employee_name,
+audit_location,
+statements
+FROM
+Incorrect_records
+WHERE
+employee_name in (SELECT employee_name FROM suspect_list)
+and statements like '%cash%';
+;
+-- from above the suspect list has allegations of bribery
+
+/*
+To sum up the evidence for Zuriel Matembo, Malachi Mavuso, Bello Azibo and Lalitha Kaburi:
+1. They all made more mistakes than their peers on average.
+2. They all have incriminating statements made against them, and only them.
+It is not decisive proof, but it is concerning enough to flag it.
 */
